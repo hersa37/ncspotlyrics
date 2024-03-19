@@ -12,6 +12,9 @@ import os.path
 database_path = os.path.abspath("lyricsdb.db")
 offset = 600
 
+headers = {
+    'User-Agent': 'ncspotlyrics v0.01 (https://github.com/hersa37/ncspotlyrics)'
+}
 
 def current_playing_metadata(player_interface):
     raw_metadata = player_interface.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
@@ -133,7 +136,7 @@ def find_lyric(metadata):
                             'track_name=' + urllib.parse.quote(metadata['title']) +
                             '&album_name=' + urllib.parse.quote(metadata['album']) +
                             '&artist_name=' + urllib.parse.quote(metadata['artist']) +
-                            '&duration=' + str(metadata['duration']))
+                            '&duration=' + str(metadata['duration']), headers=headers)
     response = response.json()
     if 'statusCode' in response:
         result = lyric_search(metadata)
