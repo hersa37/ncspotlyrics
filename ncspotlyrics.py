@@ -5,7 +5,7 @@ from dbus.exceptions import DBusException
 import requests
 import urllib.parse
 import sqlite3
-from sqlite3 import Error
+from sqlite3 import Connection, Error
 import time
 import os.path
 
@@ -16,7 +16,7 @@ headers = {
     'User-Agent': 'ncspotlyrics v0.01 (https://github.com/hersa37/ncspotlyrics)'
 }
 
-def current_playing_metadata(player_interface):
+def current_playing_metadata(player_interface : dbus.Interface) -> dict:
     raw_metadata = player_interface.Get('org.mpris.MediaPlayer2.Player', 'Metadata')
 
     metadata = {'album': str(raw_metadata['xesam:album']), 'artist': str(raw_metadata['xesam:artist'][0]),
@@ -24,7 +24,7 @@ def current_playing_metadata(player_interface):
     return metadata
 
 
-def connect_db(db):
+def connect_db(db : str) -> Connection:
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS lyrics (' +
@@ -41,7 +41,7 @@ def connect_db(db):
     return conn
 
 
-def add_to_db(metadata):
+def add_to_db(metadata : dict) -> None:
     conn = None
     try:
         conn = connect_db(database_path)
@@ -63,17 +63,17 @@ def add_to_db(metadata):
             conn.close()
 
 
-def check_has_lyrics(result_list):
+def check_has_lyrics(result_list : list):
     for each in result_list:
         if each['syncedLyrics'] is not None or each['plainLyrics'] is not None:
             return each
     return None
 
 
-def lyric_search(metadata):
+def lyric_search(metadata : dict):
     print("Looking for lyrics...")
     title = metadata['title']
-    song = None
+    song = {} 
     for n in range(len(title.split())):
         trimmed_title = title.rsplit(' ', n)[0]
         response = requests.get('https://lrclib.net/api/search?' +
@@ -81,19 +81,20 @@ def lyric_search(metadata):
         response = response.json()
 
         artist = metadata['artist']
-        song = [result for result in response if artist.lower() in result['artistName'].lower()]
-        if len(song) == 0:
+        potential_lyric = [result for result in response if artist.lower() in result['artistName'].lower()]
+        if len(potential_lyric) == 0:
             continue
 
-        check_song = song[0]
+        check_song = potential_lyric[0]
         if check_song['instrumental']:
             song = check_song
             break
 
-        song = check_has_lyrics(song)
-        if not song:
+        check_song = check_has_lyrics(potential_lyric)
+        if not check_song:
             return None
         else:
+            song = check_song
             break
 
     if len(song) == 0:
@@ -111,7 +112,7 @@ def lyric_search(metadata):
     return metadata
 
 
-def find_lyric(metadata):
+def find_lyric(metadata : dict) -> dict:
     # Find in database first
     conn = None
     try:
@@ -165,11 +166,11 @@ def find_lyric(metadata):
     return metadata
 
 
-def get_position(player_interface):
+def get_position(player_interface : dbus.Interface) -> int:
     return player_interface.Get('org.mpris.MediaPlayer2.Player', 'Position') / 1000
 
 
-def display_lyrics(metadata, player_interface):
+def display_lyrics(metadata : dict, player_interface : dbus.Interface):
     print("\n============", metadata['title'], "-", metadata['artist'], "============\n")
     if not metadata['isSynced']:
         print(metadata['lyrics'])
