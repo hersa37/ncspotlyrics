@@ -208,8 +208,9 @@ def display_lyrics(metadata : dict, player_interface : dbus.Interface):
                 if line_first_time:
                     print(">", timed_lyrics[n - 1]['line'])
                     line_first_time = False
+                time.sleep(0.5)
                 position = get_position(player_interface)
-
+                
     position = get_position(player_interface)
 
     while position / 1000 < metadata['duration'] and metadata['title'] == current_playing_metadata(player_interface)[
